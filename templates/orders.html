@@ -32,7 +32,6 @@
                             <th>Ordered Products</th>
                             <th>Customer ID</th>
                             <th>Shipment ID</th>
-                            <th>Feedback ID</th>
                             <th>Payment Reference</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -58,7 +57,6 @@
                             </td>
                             <td>{{ order.customer_id }}</td>
                             <td>{{ order.Shipment_ID }}</td>
-                            <td>{{ order.Feedback_ID }}</td>
                             <td>{{ order.Payment_ReferenceCode }}</td>
                             <td>
                                 <span class="badge {% if order.Order_Status == 'Completed' %}bg-success
