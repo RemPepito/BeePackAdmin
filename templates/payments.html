@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Payments</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="paymentReferenceSearch" class="form-label">Search Payment Reference Code:</label>
+                    <input type="text" id="paymentReferenceSearch" class="form-control" placeholder="Enter Payment Reference Code...">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Payment Reference Code</th>
+                            <th>Payment Method</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr class="payment-row">
+                            <td>{{ payment.Payment_ReferenceCode }}</td>
+                            <td>{{ payment.Payment_Method }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get search input
+    const paymentReferenceSearch = document.getElementById('paymentReferenceSearch');
+
+    // Filter payments by reference code
+    function filterPayments() {
+        const searchText = paymentReferenceSearch.value.toLowerCase();
+        const rows = document.querySelectorAll('.payment-row');
+        
+        rows.forEach(row => {
+            const referenceCode = row.querySelector('td:first-child').textContent.toLowerCase();
+            row.style.display = referenceCode.includes(searchText) ? '' : 'none';
+        });
+    }
+
+    // Add event listener for search input
+    paymentReferenceSearch.addEventListener('input', filterPayments);
+});
+</script>
+{% endblock %}

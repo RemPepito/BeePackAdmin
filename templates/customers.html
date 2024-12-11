@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Customers</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="customerIdSearch" class="form-label">Search Customer ID:</label>
+                    <input type="text" id="customerIdSearch" class="form-control" placeholder="Enter Customer ID...">
+                </div>
+                <div class="col-md-4">
+                    <label for="customerNameSearch" class="form-label">Search Customer Name:</label>
+                    <input type="text" id="customerNameSearch" class="form-control" placeholder="Enter Customer Name...">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Contact Number</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr class="customer-row">
+                            <td>{{ customer.Customer_ID }}</td>
+                            <td>{{ customer.Customer_Name }}</td>
+                            <td>{{ customer.Customer_Address }}</td>
+                            <td>{{ customer.Customer_ContactNumber }}</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="editCustomer('{{ customer.Customer_ID }}')">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div class="modal fade" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editCustomerModalLabel">Edit Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editCustomerForm">
+                        <div class="mb-3">
+                            <label for="editCustomerId" class="form-label">Customer ID</label>
+                            <input type="text" class="form-control" id="editCustomerId" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCustomerName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="editCustomerName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCustomerAddress" class="form-label">Address</label>
+                            <input type="text" class="form-control" id="editCustomerAddress" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCustomerContact" class="form-label">Contact Number</label>
+                            <input type="text" class="form-control" id="editCustomerContact" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCustomer()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Filter customers by ID and Name
+    function filterCustomers() {
+        const idSearchText = document.getElementById('customerIdSearch').value.toLowerCase();
+        const nameSearchText = document.getElementById('customerNameSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('.customer-row');
+        
+        rows.forEach(row => {
+            const customerId = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
+            const customerName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            
+            const matchesId = customerId.includes(idSearchText);
+            const matchesName = customerName.includes(nameSearchText);
+            
+            row.style.display = (matchesId && matchesName) ? '' : 'none';
+        });
+    }
+
+    // Add event listeners for search inputs
+    document.getElementById('customerIdSearch').addEventListener('input', filterCustomers);
+    document.getElementById('customerNameSearch').addEventListener('input', filterCustomers);
+
+    let currentCustomerId = null;
+
+    function editCustomer(customerId) {
+        currentCustomerId = customerId;
+        
+        fetch(`/get_customer/${customerId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('editCustomerId').value = data.customer.Customer_ID;
+                    document.getElementById('editCustomerName').value = data.customer.Customer_Name;
+                    document.getElementById('editCustomerAddress').value = data.customer.Customer_Address;
+                    document.getElementById('editCustomerContact').value = data.customer.Customer_ContactNumber;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
+                    modal.show();
+                } else {
+                    alert('Error loading customer details: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading customer details');
+            });
+    }
+
+    function saveCustomer() {
+        const data = {
+            Customer_ID: document.getElementById('editCustomerId').value,
+            Customer_Name: document.getElementById('editCustomerName').value,
+            Customer_Address: document.getElementById('editCustomerAddress').value,
+            Customer_ContactNumber: document.getElementById('editCustomerContact').value
+        };
+
+        fetch(`/update_customer/${currentCustomerId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editCustomerModal'));
+                modal.hide();
+                location.reload(); // Refresh to show updated data
+            } else {
+                alert('Error updating customer: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating customer');
+        });
+    }
+</script>
+{% endblock %}

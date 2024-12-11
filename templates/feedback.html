@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Customer Feedback</h2>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="feedbackSearch" class="form-label">Search Feedback ID:</label>
+                            <input type="text" id="feedbackSearch" class="form-control" placeholder="Enter Feedback ID...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ratingFilter" class="form-label">Filter by Rating:</label>
+                            <select class="form-select" id="ratingFilter">
+                                <option value="all">All Ratings</option>
+                                <option value="5">5 Stars ⭐⭐⭐⭐⭐</option>
+                                <option value="4">4 Stars ⭐⭐⭐⭐</option>
+                                <option value="3">3 Stars ⭐⭐⭐</option>
+                                <option value="2">2 Stars ⭐⭐</option>
+                                <option value="1">1 Star ⭐</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-warning">
+                                <tr>
+                                    <th>Feedback ID</th>
+                                    <th>Customer ID</th>
+                                    <th>Rating</th>
+                                    <th>Comments</th>
+                                </tr>
+                            </thead>
+                            <tbody id="feedbackTableBody">
+                                {% for feedback in feedbacks %}
+                                <tr class="feedback-row" data-rating="{{ feedback.Customer_Rating }}">
+                                    <td>{{ feedback.Feedback_ID }}</td>
+                                    <td>{{ feedback.Customer_ID }}</td>
+                                    <td>
+                                        {% for i in range(feedback.Customer_Rating) %}
+                                        ⭐
+                                        {% endfor %}
+                                        ({{ feedback.Customer_Rating }})
+                                    </td>
+                                    <td>{{ feedback.Feedback_Comments }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Rating Distribution</h5>
+                    <canvas id="ratingChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize rating counts
+        const ratings = {{ feedbacks|map(attribute='Customer_Rating')|list|tojson }};
+        const ratingCounts = {
+            1: 0,
+            2: 0,
+            3: 0,
+            4: 0,
+            5: 0
+        };
+        
+        // Count ratings
+        ratings.forEach(rating => {
+            ratingCounts[rating]++;
+        });
+
+        // Create pie chart
+        const ctx = document.getElementById('ratingChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['5 Stars ⭐⭐⭐⭐⭐', '4 Stars ⭐⭐⭐⭐', '3 Stars ⭐⭐⭐', '2 Stars ⭐⭐', '1 Star ⭐'],
+                datasets: [{
+                    data: [
+                        ratingCounts[5],
+                        ratingCounts[4],
+                        ratingCounts[3],
+                        ratingCounts[2],
+                        ratingCounts[1]
+                    ],
+                    backgroundColor: [
+                        '#4CAF50',  // 5 stars - green
+                        '#8BC34A',  // 4 stars - light green
+                        '#FFC107',  // 3 stars - yellow
+                        '#FF9800',  // 2 stars - orange
+                        '#F44336'   // 1 star - red
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Filter function
+        function filterFeedback() {
+            const searchTerm = document.getElementById('feedbackSearch').value.toLowerCase();
+            const selectedRating = document.getElementById('ratingFilter').value;
+            const rows = document.querySelectorAll('.feedback-row');
+            
+            rows.forEach(row => {
+                const feedbackId = row.querySelector('td:first-child').textContent.toLowerCase();
+                const rating = row.getAttribute('data-rating');
+                
+                const matchesSearch = feedbackId.includes(searchTerm);
+                const matchesRating = selectedRating === 'all' || rating === selectedRating;
+                
+                row.style.display = matchesSearch && matchesRating ? '' : 'none';
+            });
+
+            updateChartData();
+        }
+
+        // Update chart data based on visible rows
+        function updateChartData() {
+            const visibleRows = document.querySelectorAll('.feedback-row:not([style*="display: none"])');
+            const newRatingCounts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+            
+            visibleRows.forEach(row => {
+                const rating = parseInt(row.getAttribute('data-rating'));
+                newRatingCounts[rating]++;
+            });
+            
+            chart.data.datasets[0].data = [
+                newRatingCounts[5],
+                newRatingCounts[4],
+                newRatingCounts[3],
+                newRatingCounts[2],
+                newRatingCounts[1]
+            ];
+            
+            chart.update();
+        }
+
+        // Add event listeners
+        document.getElementById('feedbackSearch').addEventListener('input', filterFeedback);
+        document.getElementById('ratingFilter').addEventListener('change', filterFeedback);
+    });
+</script>
+{% endblock %}

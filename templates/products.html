@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Products</h2>
+        <button class="btn btn-primary" onclick="showAddProductForm()">
+            <i class="fas fa-plus"></i> Add Product
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Product ID</th>
+                            <th>View Image</th>
+                            <th>Product Name</th>
+                            <th>Item Quantity</th>
+                            <th>Product Price</th>
+                            <th>Description</th>
+                            <th>More Details</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.Product_ID }}</td>
+                            <td>
+                                <img src="{{ product.image_path }}" 
+                                     alt="{{ product.Product_Name }}" 
+                                     class="img-thumbnail" 
+                                     style="max-width: 100px; cursor: pointer;"
+                                     onerror="this.src='https://via.placeholder.com/100x100?text=No+Image'">
+                            </td>
+                            <td>{{ product.Product_Name }}</td>
+                            <td>{{ product.Item_Quantity }}</td>
+                            <td>₱{{ product.Product_Price }}</td>
+                            <td>{{ product.Product_Description }}</td>
+                            <td>
+                                <button type="button" 
+                                        class="btn btn-warning btn-sm" 
+                                        data-bs-toggle="popover" 
+                                        data-bs-content="{{ product.More_Description }}">
+                                    View Details
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-info btn-sm" onclick="editProduct('{{ product.Product_ID }}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="showDeleteConfirmation('{{ product.Product_ID }}', '{{ product.Product_Name }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Product Modal -->
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addProductForm">
+                        <div class="mb-3">
+                            <label for="productId" class="form-label">Product ID</label>
+                            <input type="text" class="form-control" id="productId" onblur="checkProductId(this.value)" required>
+                            <small id="productIdFeedback" class="text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productName" class="form-label">Product Name</label>
+                            <input type="text" class="form-control" id="productName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="itemQuantity" class="form-label">Item Quantity</label>
+                            <input type="number" class="form-control" id="itemQuantity" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productPrice" class="form-label">Product Price</label>
+                            <input type="number" class="form-control" id="productPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productDescription" class="form-label">Product Description</label>
+                            <input type="text" class="form-control" id="productDescription" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="moreDescription" class="form-label">More Description</label>
+                            <textarea class="form-control" id="moreDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="imagePath" class="form-label">Image URL</label>
+                            <input type="text" class="form-control" id="imagePath" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="addProduct()">Add Product</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editProductModalLabel">Edit Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProductForm">
+                        <div class="mb-3">
+                            <label for="editProductId" class="form-label">Product ID</label>
+                            <input type="text" class="form-control" id="editProductId" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductName" class="form-label">Product Name</label>
+                            <input type="text" class="form-control" id="editProductName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductPrice" class="form-label">Product Price</label>
+                            <input type="number" class="form-control" id="editProductPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductQuantity" class="form-label">Item Quantity</label>
+                            <input type="number" class="form-control" id="editProductQuantity" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductDescription" class="form-label">Product Description</label>
+                            <textarea class="form-control" id="editProductDescription" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editMoreDescription" class="form-label">More Description</label>
+                            <textarea class="form-control" id="editMoreDescription"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="updateProduct()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteProductModalLabel">Delete Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the product "<span id="deleteProductName"></span>"?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteProduct()">Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalTitle">Product Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" alt="" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let isProductIdValid = false;
+let productIdToDelete = '';
+
+function showAddProductForm() {
+    var modal = new bootstrap.Modal(document.getElementById('addProductModal'));
+    modal.show();
+}
+
+function checkProductId(productId) {
+    if (!productId) {
+        document.getElementById('productIdFeedback').textContent = '';
+        isProductIdValid = false;
+        return;
+    }
+
+    fetch('/check_product_id/' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                document.getElementById('productIdFeedback').textContent = 'This Product ID already exists';
+                document.getElementById('productId').classList.add('is-invalid');
+                isProductIdValid = false;
+            } else {
+                document.getElementById('productIdFeedback').textContent = '';
+                document.getElementById('productId').classList.remove('is-invalid');
+                isProductIdValid = true;
+            }
+        });
+}
+
+function addProduct() {
+    if (!isProductIdValid) {
+        alert('Please enter a unique Product ID');
+        return;
+    }
+
+    const formData = {
+        Product_ID: document.getElementById('productId').value,
+        Product_Name: document.getElementById('productName').value,
+        Item_Quantity: parseInt(document.getElementById('itemQuantity').value),
+        Product_Price: parseInt(document.getElementById('productPrice').value),
+        Product_Description: document.getElementById('productDescription').value,
+        More_Description: document.getElementById('moreDescription').value,
+        image_path: document.getElementById('imagePath').value
+    };
+
+    fetch('/add_product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Product added successfully');
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to add product');
+        }
+    });
+}
+
+function editProduct(productId) {
+    fetch(`/get_product/${productId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('editProductId').value = data.product.Product_ID;
+                document.getElementById('editProductName').value = data.product.Product_Name;
+                document.getElementById('editProductPrice').value = data.product.Product_Price;
+                document.getElementById('editProductQuantity').value = data.product.Item_Quantity;
+                document.getElementById('editProductDescription').value = data.product.Product_Description;
+                document.getElementById('editMoreDescription').value = data.product.More_Description;
+                
+                var modal = new bootstrap.Modal(document.getElementById('editProductModal'));
+                modal.show();
+            } else {
+                alert('Error loading product details');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading product details');
+        });
+}
+
+function updateProduct() {
+    const productId = document.getElementById('editProductId').value;
+    const productData = {
+        Product_Name: document.getElementById('editProductName').value,
+        Product_Price: parseInt(document.getElementById('editProductPrice').value),
+        Item_Quantity: parseInt(document.getElementById('editProductQuantity').value),
+        Product_Description: document.getElementById('editProductDescription').value,
+        More_Description: document.getElementById('editMoreDescription').value
+    };
+
+    fetch(`/update_product/${productId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            var modal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
+            modal.hide();
+            location.reload();
+        } else {
+            alert('Error updating product: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating product');
+    });
+}
+
+function showImageModal(imagePath, productName) {
+    console.log('Image Path:', imagePath); // Debug log
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    document.getElementById('imageModalTitle').textContent = productName;
+    document.getElementById('modalImage').src = imagePath || '#';
+    document.getElementById('modalImage').alt = productName;
+    document.getElementById('modalImage').onerror = function() {
+        console.log('Image failed to load:', imagePath);
+        this.src = 'https://via.placeholder.com/300x300?text=Image+Not+Found';
+    };
+    modal.show();
+}
+
+function showDeleteConfirmation(productId, productName) {
+    productIdToDelete = productId;
+    document.getElementById('deleteProductName').textContent = productName;
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteProductModal'));
+    deleteModal.show();
+}
+
+function deleteProduct() {
+    if (productIdToDelete) {
+        fetch(`/delete_product/${productIdToDelete}`, {
+            method: 'DELETE',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal and refresh page
+                var deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteProductModal'));
+                deleteModal.hide();
+                location.reload();
+            } else {
+                alert('Error deleting product: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting product');
+        });
+    }
+}
+
+// Initialize popovers
+document.addEventListener('DOMContentLoaded', function() {
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl)
+    })
+});
+</script>
+{% endblock %}

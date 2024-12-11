@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Customer Orders</h2>
+    <div class="card">
+        <div class="card-body">
+            <!-- Search Bars -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="orderSearch" class="form-control" placeholder="Search by Order ID...">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="customerSearch" class="form-control" placeholder="Search by Customer ID...">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="shipmentSearch" class="form-control" placeholder="Search by Shipment ID...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer ID</th>
+                            <th>Shipment ID</th>
+                            <th>Feedback ID</th>
+                            <th>Payment Reference</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.order_id }}</td>
+                            <td>{{ order.customer_id }}</td>
+                            <td>{{ order.Shipment_ID }}</td>
+                            <td>{{ order.Feedback_ID }}</td>
+                            <td>{{ order.Payment_ReferenceCode }}</td>
+                            <td>
+                                <span class="badge {% if order.Order_Status == 'Completed' %}bg-success
+                                      {% elif order.Order_Status == 'On going shipment' %}bg-warning
+                                      {% else %}bg-secondary{% endif %}">
+                                    {{ order.Order_Status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const orderSearch = document.getElementById('orderSearch');
+    const customerSearch = document.getElementById('customerSearch');
+    const shipmentSearch = document.getElementById('shipmentSearch');
+
+    orderSearch.addEventListener('input', filterOrders);
+    customerSearch.addEventListener('input', filterOrders);
+    shipmentSearch.addEventListener('input', filterOrders);
+});
+
+function filterOrders() {
+    const orderValue = document.getElementById('orderSearch').value.toLowerCase();
+    const customerValue = document.getElementById('customerSearch').value.toLowerCase();
+    const shipmentValue = document.getElementById('shipmentSearch').value.toLowerCase();
+    
+    const tableBody = document.getElementById('ordersTableBody');
+    const rows = tableBody.getElementsByTagName('tr');
+
+    for (let row of rows) {
+        const orderId = row.cells[0].textContent.toLowerCase();
+        const customerId = row.cells[1].textContent.toLowerCase();
+        const shipmentId = row.cells[2].textContent.toLowerCase();
+        
+        const orderMatch = orderId.includes(orderValue);
+        const customerMatch = customerId.includes(customerValue);
+        const shipmentMatch = shipmentId.includes(shipmentValue);
+        
+        if (orderMatch && customerMatch && shipmentMatch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
+</script>
+{% endblock %}

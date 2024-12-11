@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Customer Orders</h2>
+    <div class="card">
+        <div class="card-body">
+            <!-- Search Bars -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="orderSearch" class="form-control" placeholder="Search by Order ID...">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="customerSearch" class="form-control" placeholder="Search by Customer ID...">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="shipmentSearch" class="form-control" placeholder="Search by Shipment ID...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Ordered Products</th>
+                            <th>Customer ID</th>
+                            <th>Shipment ID</th>
+                            <th>Feedback ID</th>
+                            <th>Payment Reference</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        {% for order in orders %}
+                        <tr data-order-id="{{ order.order_id }}">
+                            <td>{{ order.order_id }}</td>
+                            <td>
+                                {% if order.order_items %}
+                                    {% for item in order.order_items %}
+                                        <div class="mb-2">
+                                            <strong>Name:</strong> {{ item.Product_Name }}<br>
+                                            <strong>Description:</strong> {{ item.Product_Description }}<br>
+                                            <strong>Quantity:</strong> {{ item.quantity }}
+                                        </div>
+                                        {% if not loop.last %}<hr class="my-1">{% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    No items
+                                {% endif %}
+                            </td>
+                            <td>{{ order.customer_id }}</td>
+                            <td>{{ order.Shipment_ID }}</td>
+                            <td>{{ order.Feedback_ID }}</td>
+                            <td>{{ order.Payment_ReferenceCode }}</td>
+                            <td>
+                                <span class="badge {% if order.Order_Status == 'Completed' %}bg-success
+                                      {% elif order.Order_Status == 'On going shipment' %}bg-warning
+                                      {% else %}bg-secondary{% endif %}">
+                                    {{ order.Order_Status }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="deleteOrder('{{ order.order_id }}', '{{ order.Shipment_ID }}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Items Count Modal -->
+<div class="modal fade" id="orderItemsModal" tabindex="-1" aria-labelledby="orderItemsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderItemsModalLabel">Order Items Count</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>This order appears in <span id="itemCount" class="fw-bold"></span> order items.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const orderSearch = document.getElementById('orderSearch');
+    const customerSearch = document.getElementById('customerSearch');
+    const shipmentSearch = document.getElementById('shipmentSearch');
+
+    orderSearch.addEventListener('input', filterOrders);
+    customerSearch.addEventListener('input', filterOrders);
+    shipmentSearch.addEventListener('input', filterOrders);
+});
+
+function filterOrders() {
+    const orderValue = document.getElementById('orderSearch').value.toLowerCase();
+    const customerValue = document.getElementById('customerSearch').value.toLowerCase();
+    const shipmentValue = document.getElementById('shipmentSearch').value.toLowerCase();
+    
+    const tableBody = document.getElementById('ordersTableBody');
+    const rows = tableBody.getElementsByTagName('tr');
+
+    for (let row of rows) {
+        const orderId = row.cells[0].textContent.toLowerCase();
+        const customerId = row.cells[2].textContent.toLowerCase();
+        const shipmentId = row.cells[3].textContent.toLowerCase();
+        
+        const orderMatch = orderId.includes(orderValue);
+        const customerMatch = customerId.includes(customerValue);
+        const shipmentMatch = shipmentId.includes(shipmentValue);
+        
+        if (orderMatch && customerMatch && shipmentMatch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
+
+async function showOrderItemsCount(orderId) {
+    try {
+        const response = await fetch(`/get_order_items_count/${orderId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('itemCount').textContent = data.count;
+            const modal = new bootstrap.Modal(document.getElementById('orderItemsModal'));
+            modal.show();
+        } else {
+            console.error('Error:', data.message);
+        }
+    } catch (error) {
+        console.error('Error fetching order items count:', error);
+    }
+}
+
+async function deleteOrder(orderId, shipmentId) {
+    if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`/delete_order/${orderId}/${shipmentId}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove the row from the table
+                const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
+                if (row) {
+                    row.remove();
+                }
+                // Reload the page to refresh the data
+                window.location.reload();
+            } else {
+                alert('Error deleting order: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error deleting order. Please try again.');
+        }
+    }
+}
+</script>
+{% endblock %}
