@@ -21,6 +21,7 @@
                             <th>Item Quantity</th>
                             <th>Product Price</th>
                             <th>Description</th>
+                            <th>Supplier</th>
                             <th>More Details</th>
                             <th>Actions</th>
                         </tr>
@@ -40,6 +41,7 @@
                             <td>{{ product.Item_Quantity }}</td>
                             <td>₱{{ product.Product_Price }}</td>
                             <td>{{ product.Product_Description }}</td>
+                            <td>{{ product.Supplier_Name }}</td>
                             <td>
                                 <button type="button" 
                                         class="btn btn-warning btn-sm" 
@@ -100,6 +102,15 @@
                             <textarea class="form-control" id="moreDescription" rows="3" required></textarea>
                         </div>
                         <div class="mb-3">
+                            <label for="supplierId" class="form-label">Supplier</label>
+                            <select class="form-select" id="supplierId" required>
+                                <option value="">Select Supplier</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.Supplier_ID }}">{{ supplier.Supplier_Name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label for="imagePath" class="form-label">Image URL</label>
                             <input type="text" class="form-control" id="imagePath" required>
                         </div>
@@ -123,29 +134,39 @@
                 </div>
                 <div class="modal-body">
                     <form id="editProductForm">
-                        <div class="mb-3">
-                            <label for="editProductId" class="form-label">Product ID</label>
-                            <input type="text" class="form-control" id="editProductId" readonly>
-                        </div>
+                        <input type="hidden" id="editProductId">
                         <div class="mb-3">
                             <label for="editProductName" class="form-label">Product Name</label>
                             <input type="text" class="form-control" id="editProductName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editItemQuantity" class="form-label">Item Quantity</label>
+                            <input type="number" class="form-control" id="editItemQuantity" required>
                         </div>
                         <div class="mb-3">
                             <label for="editProductPrice" class="form-label">Product Price</label>
                             <input type="number" class="form-control" id="editProductPrice" required>
                         </div>
                         <div class="mb-3">
-                            <label for="editProductQuantity" class="form-label">Item Quantity</label>
-                            <input type="number" class="form-control" id="editProductQuantity" required>
-                        </div>
-                        <div class="mb-3">
                             <label for="editProductDescription" class="form-label">Product Description</label>
-                            <textarea class="form-control" id="editProductDescription" required></textarea>
+                            <input type="text" class="form-control" id="editProductDescription" required>
                         </div>
                         <div class="mb-3">
                             <label for="editMoreDescription" class="form-label">More Description</label>
-                            <textarea class="form-control" id="editMoreDescription"></textarea>
+                            <textarea class="form-control" id="editMoreDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editSupplierId" class="form-label">Supplier</label>
+                            <select class="form-select" id="editSupplierId" required>
+                                <option value="">Select Supplier</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.Supplier_ID }}">{{ supplier.Supplier_Name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editImagePath" class="form-label">Image URL</label>
+                            <input type="text" class="form-control" id="editImagePath" required>
                         </div>
                     </form>
                 </div>
@@ -237,6 +258,7 @@ function addProduct() {
         Product_Price: parseInt(document.getElementById('productPrice').value),
         Product_Description: document.getElementById('productDescription').value,
         More_Description: document.getElementById('moreDescription').value,
+        Supplier_ID: document.getElementById('supplierId').value,
         image_path: document.getElementById('imagePath').value
     };
 
@@ -263,13 +285,15 @@ function editProduct(productId) {
             if (data.success) {
                 document.getElementById('editProductId').value = data.product.Product_ID;
                 document.getElementById('editProductName').value = data.product.Product_Name;
+                document.getElementById('editItemQuantity').value = data.product.Item_Quantity;
                 document.getElementById('editProductPrice').value = data.product.Product_Price;
-                document.getElementById('editProductQuantity').value = data.product.Item_Quantity;
                 document.getElementById('editProductDescription').value = data.product.Product_Description;
                 document.getElementById('editMoreDescription').value = data.product.More_Description;
+                document.getElementById('editImagePath').value = data.product.image_path;
+                document.getElementById('editSupplierId').value = data.product.Supplier_ID || '';
                 
-                var modal = new bootstrap.Modal(document.getElementById('editProductModal'));
-                modal.show();
+                const editModal = new bootstrap.Modal(document.getElementById('editProductModal'));
+                editModal.show();
             } else {
                 alert('Error loading product details');
             }
@@ -284,10 +308,12 @@ function updateProduct() {
     const productId = document.getElementById('editProductId').value;
     const productData = {
         Product_Name: document.getElementById('editProductName').value,
-        Product_Price: parseInt(document.getElementById('editProductPrice').value),
-        Item_Quantity: parseInt(document.getElementById('editProductQuantity').value),
+        Item_Quantity: parseInt(document.getElementById('editItemQuantity').value),
+        Product_Price: parseFloat(document.getElementById('editProductPrice').value),
         Product_Description: document.getElementById('editProductDescription').value,
-        More_Description: document.getElementById('editMoreDescription').value
+        More_Description: document.getElementById('editMoreDescription').value,
+        Supplier_ID: document.getElementById('editSupplierId').value,
+        image_path: document.getElementById('editImagePath').value
     };
 
     fetch(`/update_product/${productId}`, {

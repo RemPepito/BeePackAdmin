@@ -38,9 +38,25 @@ def dashboard():
 @app.route('/products')
 @login_required
 def products():
-    # Get all products from the database
+    # Get all products from the database and include supplier information
     products_list = list(db.products.find({}, {'_id': 0}))
-    return render_template('products.html', products=products_list)
+    
+    # Get supplier information for each product
+    for product in products_list:
+        supplier_id = product.get('Supplier_ID')
+        if supplier_id:
+            supplier = db.suppliers.find_one({'Supplier_ID': supplier_id}, {'Supplier_Name': 1, '_id': 0})
+            if supplier:
+                product['Supplier_Name'] = supplier['Supplier_Name']
+            else:
+                product['Supplier_Name'] = 'Unknown Supplier'
+        else:
+            product['Supplier_Name'] = 'No Supplier Assigned'
+    
+    # Get all suppliers for the dropdown
+    suppliers_list = list(db.suppliers.find({}, {'_id': 0, 'Supplier_ID': 1, 'Supplier_Name': 1}))
+    
+    return render_template('products.html', products=products_list, suppliers=suppliers_list)
 
 @app.route('/products/<string:product_id>')
 @login_required
@@ -82,13 +98,17 @@ def orders():
             shipment_count = db.shipments.count_documents({})
             new_shipment_id = f"SHIP{shipment_count + 1}"
             
+            # Get a random employee from the database
+            employee_list = list(db.employees.find({}, {'Employee_ID': 1, '_id': 0}))
+            random_employee = random.choice(employee_list) if employee_list else {'Employee_ID': 'EMP00001'}
+            
             # Create new shipment document
             new_shipment = {
                 'Shipment_ID': new_shipment_id,
                 'order_id': order['order_id'],
                 'Shipment_Center': random.choice(["Warehouse 1", "Warehouse 2", "Warehouse 3"]),
                 'Shipment_Status': "Pending",
-                'Employee_ID': "EMP00001"
+                'Employee_ID': random_employee['Employee_ID']
             }
             
             # Insert new shipment
@@ -129,7 +149,15 @@ def employees():
 @login_required
 def feedback():
     # Get all feedback from the database
-    feedback_list = list(db.feedbacks.find({}, {'_id': 0}))  # Excluding the MongoDB _id field
+    feedback_list = list(db.feedbacks.find({}, {'_id': 0}))
+    
+    # Convert Customer_Rating to integer for each feedback
+    for feedback in feedback_list:
+        try:
+            feedback['Customer_Rating'] = int(feedback['Customer_Rating'])
+        except (ValueError, TypeError):
+            feedback['Customer_Rating'] = 0  # Default to 0 if conversion fails
+    
     return render_template('feedback.html', feedbacks=feedback_list)
 
 @app.route('/shipment')
@@ -142,24 +170,37 @@ def shipment():
 @app.route('/update_shipment_status', methods=['POST'])
 @login_required
 def update_shipment_status():
-    shipment_id = request.form.get('shipment_id')
-    new_status = request.form.get('status')
-    
-    if shipment_id and new_status:
-        # Update shipment status
-        db.shipments.update_one(
+    try:
+        data = request.get_json()
+        shipment_id = data.get('shipment_id')
+        new_status = data.get('status')
+
+        # Update status in shipments collection
+        shipment_result = db.shipments.update_one(
             {'Shipment_ID': shipment_id},
             {'$set': {'Shipment_Status': new_status}}
         )
-        
-        # Update corresponding order status
-        db.orders.update_one(
+
+        # Update status in orders collection
+        order_result = db.orders.update_one(
             {'Shipment_ID': shipment_id},
             {'$set': {'Order_Status': new_status}}
         )
-        
-        return jsonify({'success': True, 'message': 'Status updated successfully'})
-    return jsonify({'success': False, 'message': 'Invalid data provided'})
+
+        if shipment_result.modified_count > 0 or order_result.modified_count > 0:
+            return jsonify({
+                'success': True,
+                'message': 'Status updated successfully'
+            })
+        return jsonify({
+            'success': False,
+            'message': 'No shipment found with the given ID'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
 
 @app.route('/update_shipment_id', methods=['POST'])
 def update_shipment_id():
@@ -190,24 +231,33 @@ def update_shipment_id():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/update_shipment_center', methods=['POST'])
+@login_required
 def update_shipment_center():
     try:
         data = request.get_json()
         shipment_id = data.get('shipment_id')
-        new_center = data.get('new_center')
-        
-        # Update the shipment center in MongoDB
+        new_center = data.get('center')
+
+        # Update center in shipments collection
         result = db.shipments.update_one(
             {'Shipment_ID': shipment_id},
             {'$set': {'Shipment_Center': new_center}}
         )
-        
+
         if result.modified_count > 0:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'message': 'Shipment not found'})
+            return jsonify({
+                'success': True,
+                'message': 'Shipment center updated successfully'
+            })
+        return jsonify({
+            'success': False,
+            'message': 'No shipment found with the given ID'
+        })
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
 
 @app.route('/update_shipment_employee', methods=['POST'])
 def update_shipment_employee():
@@ -247,8 +297,12 @@ def add_shipment():
             'Shipment_Status': data['shipment_status'],
             'Employee_ID': data['employee_id']
         })
+        return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
 
 @app.route('/suppliers')
 @login_required
@@ -467,19 +521,37 @@ def logout():
 @app.route('/add_product', methods=['POST'])
 @login_required
 def add_product():
-    data = request.json
     try:
-        product = {
-            'Product_ID': data['Product_ID'],
+        data = request.get_json()
+        
+        # Generate a unique Product_ID
+        last_product = db.products.find_one(sort=[('Product_ID', -1)])
+        if last_product:
+            last_id = int(last_product['Product_ID'].replace('P', ''))
+            new_id = f'P{str(last_id + 1).zfill(3)}'
+        else:
+            new_id = 'P001'
+        
+        # Create new product document
+        new_product = {
+            'Product_ID': new_id,
             'Product_Name': data['Product_Name'],
-            'Item_Quantity': data['Item_Quantity'],
             'Product_Price': data['Product_Price'],
+            'Item_Quantity': data['Item_Quantity'],
             'Product_Description': data['Product_Description'],
             'More_Description': data['More_Description'],
-            'image_path': data['image_path']
+            'Supplier_ID': data['Supplier_ID'],
+            'image_path': data.get('image_path', '')  # Default to empty string if not provided
         }
-        db.products.insert_one(product)
-        return jsonify({'success': True})
+        
+        # Insert the new product
+        db.products.insert_one(new_product)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Product added successfully',
+            'product_id': new_id
+        })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -492,54 +564,55 @@ def check_product_id(product_id):
     existing_product = db.products.find_one({'Product_ID': product_id})
     return jsonify({'exists': existing_product is not None})
 
-@app.route('/get_product/<product_id>')
+@app.route('/get_product/<string:product_id>')
 @login_required
 def get_product(product_id):
     try:
-        product = db.products.find_one({'Product_ID': product_id})
+        product = db.products.find_one({'Product_ID': product_id}, {'_id': 0})
         if product:
-            # Convert ObjectId to string for JSON serialization
-            product['_id'] = str(product['_id'])
             return jsonify({
                 'success': True,
                 'product': product
             })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Product not found'
-            })
+        return jsonify({
+            'success': False,
+            'message': 'Product not found'
+        })
     except Exception as e:
         return jsonify({
             'success': False,
             'message': str(e)
         })
 
-@app.route('/update_product/<product_id>', methods=['POST'])
+@app.route('/update_product/<string:product_id>', methods=['POST'])
 @login_required
 def update_product(product_id):
     try:
-        data = request.json
-        update_data = {
-            'Product_Name': data['Product_Name'],
-            'Product_Price': data['Product_Price'],
-            'Item_Quantity': data['Item_Quantity'],
-            'Product_Description': data['Product_Description'],
-            'More_Description': data['More_Description']
-        }
+        data = request.get_json()
         
+        # Update product in database
         result = db.products.update_one(
             {'Product_ID': product_id},
-            {'$set': update_data}
+            {'$set': {
+                'Product_Name': data['Product_Name'],
+                'Product_Price': data['Product_Price'],
+                'Item_Quantity': data['Item_Quantity'],
+                'Product_Description': data['Product_Description'],
+                'More_Description': data['More_Description'],
+                'Supplier_ID': data['Supplier_ID'],
+                'image_path': data['image_path']
+            }}
         )
         
         if result.modified_count > 0:
-            return jsonify({'success': True})
-        else:
             return jsonify({
-                'success': False,
-                'message': 'Product not found or no changes made'
+                'success': True,
+                'message': 'Product updated successfully'
             })
+        return jsonify({
+            'success': False,
+            'message': 'No changes made to the product'
+        })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -707,6 +780,113 @@ def delete_order(order_id, shipment_id):
         return jsonify({'success': True, 'message': 'Order deleted successfully'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/add_employee', methods=['POST'])
+@login_required
+def add_employee():
+    try:
+        data = request.get_json()
+        
+        # Get the current count of employees to generate the new ID
+        employee_count = db.employees.count_documents({})
+        new_employee_id = f"EMP{str(employee_count + 1).zfill(5)}"
+        
+        # Create new employee document
+        new_employee = {
+            'Employee_ID': new_employee_id,
+            'Employee_Name': data['Employee_Name'],
+            'Department': data['Department'],
+            'Employee_ContactNumber': data['Employee_ContactNumber']
+        }
+        
+        # Insert the new employee
+        db.employees.insert_one(new_employee)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Employee added successfully',
+            'employee': new_employee
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
+
+@app.route('/delete_employee/<string:employee_id>', methods=['DELETE'])
+@login_required
+def delete_employee(employee_id):
+    try:
+        # Check if employee exists
+        employee = db.employees.find_one({'Employee_ID': employee_id})
+        if not employee:
+            return jsonify({
+                'success': False,
+                'message': 'Employee not found'
+            })
+
+        # Check if employee is assigned to any shipments
+        shipment = db.shipments.find_one({'Employee_ID': employee_id})
+        if shipment:
+            return jsonify({
+                'success': False,
+                'message': 'Cannot delete employee. They are assigned to shipments.'
+            })
+
+        # Delete the employee
+        result = db.employees.delete_one({'Employee_ID': employee_id})
+        
+        if result.deleted_count > 0:
+            return jsonify({
+                'success': True,
+                'message': 'Employee deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to delete employee'
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
+
+@app.route('/filter_shipments', methods=['POST'])
+@login_required
+def filter_shipments():
+    try:
+        data = request.get_json()
+        shipment_id = data.get('shipment_id', '')
+        center = data.get('center', '')
+        status = data.get('status', '')
+        employee_id = data.get('employee_id', '')
+
+        # Build the query
+        query = {}
+        if shipment_id:
+            query['Shipment_ID'] = {'$regex': shipment_id, '$options': 'i'}
+        if center:
+            query['Shipment_Center'] = center
+        if status:
+            query['Shipment_Status'] = status
+        if employee_id:
+            query['Employee_ID'] = {'$regex': employee_id, '$options': 'i'}
+
+        # Get filtered shipments
+        shipments = list(db.shipments.find(query, {'_id': 0}))
+        
+        return jsonify({
+            'success': True,
+            'shipments': shipments
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
 
 if __name__ == '__main__':
     app.run(port=5002, debug=True)

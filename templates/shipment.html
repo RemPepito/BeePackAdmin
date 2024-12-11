@@ -66,9 +66,12 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="input-group">
-                        <input type="text" id="centerSearch" class="form-control" placeholder="Search by Center...">
-                    </div>
+                    <select class="form-select" id="centerSearch">
+                        <option value="">All Centers</option>
+                        <option value="Warehouse 1">Warehouse 1</option>
+                        <option value="Warehouse 2">Warehouse 2</option>
+                        <option value="Warehouse 3">Warehouse 3</option>
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" id="filterStatus">
@@ -101,69 +104,6 @@
                         </tr>
                     </thead>
                     <tbody id="shipmentsTableBody">
-                        {% for shipment in shipments %}
-                        <tr>
-                            <td>
-                                <div class="editable-field">
-                                    <span class="shipment-id">{{ shipment.Shipment_ID }}</span>
-                                    <button class="btn btn-sm btn-light edit-btn ms-2">
-                                        <i class="fas fa-edit text-secondary"></i>
-                                    </button>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="dropdown">
-                                    <button class="center-badge dropdown-toggle" 
-                                            type="button" 
-                                            data-bs-toggle="dropdown" 
-                                            aria-expanded="false"
-                                            data-shipment-id="{{ shipment.Shipment_ID }}">
-                                        {{ shipment.Shipment_Center }}
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item center-option" href="#" data-center="Warehouse 1">Warehouse 1</a></li>
-                                        <li><a class="dropdown-item center-option" href="#" data-center="Warehouse 2">Warehouse 2</a></li>
-                                        <li><a class="dropdown-item center-option" href="#" data-center="Warehouse 3">Warehouse 3</a></li>
-                                    </ul>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="dropdown">
-                                    <button class="status-badge dropdown-toggle" 
-                                            type="button" 
-                                            data-bs-toggle="dropdown" 
-                                            aria-expanded="false"
-                                            data-shipment-id="{{ shipment.Shipment_ID }}">
-                                        {{ shipment.Shipment_Status }}
-                                        {% if shipment.Shipment_Status == 'Delivered' %}
-                                            <i class="fas fa-check-circle ms-1"></i>
-                                        {% endif %}
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item status-option" href="#" data-status="Shipped">Shipped</a></li>
-                                        <li><a class="dropdown-item status-option" href="#" data-status="Pending">Pending</a></li>
-                                        <li><a class="dropdown-item status-option" href="#" data-status="Delivered">Delivered <i class="fas fa-check-circle ms-1"></i></a></li>
-                                    </ul>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="dropdown">
-                                    <button class="employee-badge dropdown-toggle" 
-                                            type="button" 
-                                            data-bs-toggle="dropdown" 
-                                            aria-expanded="false"
-                                            data-shipment-id="{{ shipment.Shipment_ID }}">
-                                        {{ shipment.Employee_ID }}
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        {% for employee in employees %}
-                                        <li><a class="dropdown-item employee-option" href="#" data-employee="{{ employee.Employee_ID }}">{{ employee.Employee_ID }}</a></li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -213,6 +153,27 @@
     transition: all 0.3s ease;
     background-color: #ffd700;
     color: black;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.center-badge:hover {
+    background-color: #ffc800;
+}
+
+.dropdown-menu {
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.dropdown-item {
+    padding: 8px 20px;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
 }
 
 .employee-badge {
@@ -301,60 +262,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const statusBadges = document.querySelectorAll('.status-badge');
-    
-    statusBadges.forEach(badge => {
-        // Set initial status
-        const currentStatus = badge.textContent.trim();
-        badge.setAttribute('data-status', currentStatus);
-        
-        // Find all status options in this badge's dropdown
-        const dropdownItems = badge.nextElementSibling.querySelectorAll('.status-option');
-        
-        dropdownItems.forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                const newStatus = this.getAttribute('data-status');
-                const shipmentId = badge.getAttribute('data-shipment-id');
-                
-                // Send update to server
-                fetch('/update_shipment_status', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `shipment_id=${shipmentId}&status=${newStatus}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update badge text and status
-                        badge.innerHTML = newStatus;
-                        badge.setAttribute('data-status', newStatus);
-                        
-                        // Add check icon if status is Delivered
-                        if (newStatus === 'Delivered') {
-                            const checkIcon = document.createElement('i');
-                            checkIcon.className = 'fas fa-check-circle ms-1';
-                            badge.appendChild(checkIcon);
-                        }
-                        
-                        // Show success message
-                        alert('Status Updated');
-                    } else {
-                        // Show error message
-                        alert(data.message || 'Failed to update status');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to update status. Please try again.');
-                });
-            });
-        });
-    });
-
-    // Get search inputs
     const shipmentIdSearch = document.getElementById('shipmentIdSearch');
     const centerSearch = document.getElementById('centerSearch');
     const filterStatus = document.getElementById('filterStatus');
@@ -362,33 +269,249 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableBody = document.getElementById('shipmentsTableBody');
 
     function filterTable() {
-        const rows = tableBody.getElementsByTagName('tr');
-        const shipmentFilter = shipmentIdSearch.value.toLowerCase();
-        const centerFilter = centerSearch.value.toLowerCase();
-        const statusFilter = filterStatus.value.toLowerCase();
-        const employeeFilter = employeeSearch.value.toLowerCase();
+        const filterData = {
+            shipment_id: shipmentIdSearch.value,
+            center: centerSearch.value,
+            status: filterStatus.value,
+            employee_id: employeeSearch.value
+        };
 
-        for (let row of rows) {
-            const cells = row.getElementsByTagName('td');
-            const shipmentId = cells[0].textContent.toLowerCase();
-            const center = cells[1].textContent.toLowerCase();
-            const status = cells[2].querySelector('.status-badge').textContent.trim().toLowerCase();
-            const employeeId = cells[3].querySelector('.employee-badge').textContent.toLowerCase();
+        fetch('/filter_shipments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(filterData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Clear existing table rows
+                tableBody.innerHTML = '';
+                
+                // Add filtered shipments
+                data.shipments.forEach(shipment => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="editable-field">
+                            <span class="shipment-id">${shipment.Shipment_ID}</span>
+                            <button class="edit-btn"><i class="fas fa-edit"></i></button>
+                        </td>
+                        <td>
+                            <button class="center-badge" data-shipment-id="${shipment.Shipment_ID}" data-center="${shipment.Shipment_Center}">
+                                ${shipment.Shipment_Center}
+                            </button>
+                        </td>
+                        <td>
+                            <button class="status-badge" data-shipment-id="${shipment.Shipment_ID}" data-status="${shipment.Shipment_Status}">
+                                ${shipment.Shipment_Status}
+                                ${shipment.Shipment_Status === 'Delivered' ? '<i class="fas fa-check-circle ms-2"></i>' : ''}
+                            </button>
+                        </td>
+                        <td>
+                            <span class="employee-badge" data-shipment-id="${shipment.Shipment_ID}">${shipment.Employee_ID}</span>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
 
-            const matchShipment = shipmentId.includes(shipmentFilter);
-            const matchCenter = center.includes(centerFilter);
-            const matchStatus = !statusFilter || status.includes(statusFilter);
-            const matchEmployee = employeeId.includes(employeeFilter);
-
-            row.style.display = (matchShipment && matchCenter && matchStatus && matchEmployee) ? '' : 'none';
-        }
+                // Reattach event listeners for status changes
+                attachStatusChangeListeners();
+                attachCenterChangeListeners();
+            } else {
+                console.error('Error filtering shipments:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
     }
 
     // Add event listeners
     shipmentIdSearch.addEventListener('input', filterTable);
-    centerSearch.addEventListener('input', filterTable);
+    centerSearch.addEventListener('change', filterTable);
     filterStatus.addEventListener('change', filterTable);
     employeeSearch.addEventListener('input', filterTable);
+
+    // Initial filter
+    filterTable();
+
+    // Get search inputs
+    const statusBadges = document.querySelectorAll('.status-badge');
+    
+    function attachStatusChangeListeners() {
+        document.querySelectorAll('.status-badge').forEach(badge => {
+            badge.addEventListener('click', function() {
+                const shipmentId = this.dataset.shipmentId;
+                const currentStatus = this.dataset.status;
+                
+                // Create dropdown menu
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.className = 'dropdown-menu show';
+                dropdownMenu.style.position = 'absolute';
+                
+                // Add status options
+                const statuses = ['Shipped', 'Pending', 'Delivered'];
+                statuses.forEach(status => {
+                    if (status !== currentStatus) {
+                        const item = document.createElement('a');
+                        item.className = 'dropdown-item';
+                        item.href = '#';
+                        item.textContent = status;
+                        item.dataset.status = status;
+                        
+                        // Add checkmark icon for Delivered option
+                        if (status === 'Delivered') {
+                            const checkIcon = document.createElement('i');
+                            checkIcon.className = 'fas fa-check-circle ms-2';
+                            item.appendChild(checkIcon);
+                        }
+                        
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            
+                            // Send update request
+                            fetch('/update_shipment_status', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    shipment_id: shipmentId,
+                                    status: status
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Update badge
+                                    badge.dataset.status = status;
+                                    badge.className = `status-badge ${status.toLowerCase()}`;
+                                    
+                                    // Clear existing content
+                                    badge.innerHTML = status;
+                                    
+                                    // Add checkmark icon if status is Delivered
+                                    if (status === 'Delivered') {
+                                        const checkIcon = document.createElement('i');
+                                        checkIcon.className = 'fas fa-check-circle ms-2';
+                                        badge.appendChild(checkIcon);
+                                    }
+                                    
+                                    // Remove dropdown
+                                    document.body.removeChild(dropdownMenu);
+                                } else {
+                                    alert('Failed to update status: ' + data.message);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Failed to update status');
+                            });
+                        });
+                        
+                        dropdownMenu.appendChild(item);
+                    }
+                });
+                
+                // Position and show dropdown
+                const rect = this.getBoundingClientRect();
+                dropdownMenu.style.top = rect.bottom + 'px';
+                dropdownMenu.style.left = rect.left + 'px';
+                document.body.appendChild(dropdownMenu);
+                
+                // Close dropdown when clicking outside
+                const closeDropdown = function(e) {
+                    if (!dropdownMenu.contains(e.target) && e.target !== badge) {
+                        document.body.removeChild(dropdownMenu);
+                        document.removeEventListener('click', closeDropdown);
+                    }
+                };
+                
+                setTimeout(() => {
+                    document.addEventListener('click', closeDropdown);
+                }, 0);
+            });
+        });
+    }
+
+    function attachCenterChangeListeners() {
+        document.querySelectorAll('.center-badge').forEach(badge => {
+            badge.addEventListener('click', function() {
+                const shipmentId = this.dataset.shipmentId;
+                const currentCenter = this.dataset.center;
+                
+                // Create dropdown menu
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.className = 'dropdown-menu show';
+                dropdownMenu.style.position = 'absolute';
+                
+                // Add center options
+                const centers = ['Warehouse 1', 'Warehouse 2', 'Warehouse 3'];
+                centers.forEach(center => {
+                    if (center !== currentCenter) {
+                        const item = document.createElement('a');
+                        item.className = 'dropdown-item';
+                        item.href = '#';
+                        item.textContent = center;
+                        
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            
+                            // Send update request
+                            fetch('/update_shipment_center', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    shipment_id: shipmentId,
+                                    center: center
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Update badge
+                                    badge.textContent = center;
+                                    badge.dataset.center = center;
+                                    
+                                    // Remove dropdown
+                                    document.body.removeChild(dropdownMenu);
+                                } else {
+                                    alert('Failed to update center: ' + data.message);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Failed to update center');
+                            });
+                        });
+                        
+                        dropdownMenu.appendChild(item);
+                    }
+                });
+                
+                // Position and show dropdown
+                const rect = this.getBoundingClientRect();
+                dropdownMenu.style.top = rect.bottom + 'px';
+                dropdownMenu.style.left = rect.left + 'px';
+                document.body.appendChild(dropdownMenu);
+                
+                // Close dropdown when clicking outside
+                const closeDropdown = function(e) {
+                    if (!dropdownMenu.contains(e.target) && e.target !== badge) {
+                        document.body.removeChild(dropdownMenu);
+                        document.removeEventListener('click', closeDropdown);
+                    }
+                };
+                
+                setTimeout(() => {
+                    document.addEventListener('click', closeDropdown);
+                }, 0);
+            });
+        });
+    }
 
     // Handle Shipment ID editing
     document.querySelectorAll('.edit-btn').forEach(btn => {
@@ -425,26 +548,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.style.display = '';
                 container.removeChild(editForm);
             });
-        });
-    });
-
-    // Handle Shipment Center changes
-    document.querySelectorAll('.center-option').forEach(option => {
-        option.addEventListener('click', function(e) {
-            e.preventDefault();
-            const shipmentId = this.closest('.dropdown').querySelector('.center-badge').dataset.shipmentId;
-            const newCenter = this.dataset.center;
-            updateShipmentCenter(shipmentId, newCenter, this);
-        });
-    });
-
-    // Handle Employee ID changes
-    document.querySelectorAll('.employee-option').forEach(option => {
-        option.addEventListener('click', function(e) {
-            e.preventDefault();
-            const shipmentId = this.closest('.dropdown').querySelector('.employee-badge').dataset.shipmentId;
-            const newEmployee = this.dataset.employee;
-            updateShipmentEmployee(shipmentId, newEmployee, this);
         });
     });
 
@@ -492,64 +595,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add new shipment to table
                 const newRow = document.createElement('tr');
                 newRow.innerHTML = `
-                    <td>
-                        <div class="editable-field">
-                            <span class="shipment-id">${shipmentId}</span>
-                            <button class="btn btn-sm btn-light edit-btn ms-2">
-                                <i class="fas fa-edit text-secondary"></i>
-                            </button>
-                        </div>
+                    <td class="editable-field">
+                        <span class="shipment-id">${shipmentId}</span>
+                        <button class="edit-btn"><i class="fas fa-edit"></i></button>
                     </td>
                     <td>
-                        <div class="dropdown">
-                            <button class="center-badge dropdown-toggle" 
-                                    type="button" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false"
-                                    data-shipment-id="${shipmentId}">
-                                ${shipmentCenter}
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item center-option" href="#" data-center="Warehouse 1">Warehouse 1</a></li>
-                                <li><a class="dropdown-item center-option" href="#" data-center="Warehouse 2">Warehouse 2</a></li>
-                                <li><a class="dropdown-item center-option" href="#" data-center="Warehouse 3">Warehouse 3</a></li>
-                            </ul>
-                        </div>
+                        <button class="center-badge" data-shipment-id="${shipmentId}" data-center="${shipmentCenter}">
+                            ${shipmentCenter}
+                        </button>
                     </td>
                     <td>
-                        <div class="dropdown">
-                            <button class="status-badge dropdown-toggle" 
-                                    type="button" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false"
-                                    data-shipment-id="${shipmentId}">
-                                ${shipmentStatus}
-                                {% if shipmentStatus == 'Delivered' %}
-                                    <i class="fas fa-check-circle ms-1"></i>
-                                {% endif %}
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item status-option" href="#" data-status="Shipped">Shipped</a></li>
-                                <li><a class="dropdown-item status-option" href="#" data-status="Pending">Pending</a></li>
-                                <li><a class="dropdown-item status-option" href="#" data-status="Delivered">Delivered <i class="fas fa-check-circle ms-1"></i></a></li>
-                            </ul>
-                        </div>
+                        <button class="status-badge" data-shipment-id="${shipmentId}" data-status="${shipmentStatus}">
+                            ${shipmentStatus}
+                            ${shipmentStatus === 'Delivered' ? '<i class="fas fa-check-circle ms-2"></i>' : ''}
+                        </button>
                     </td>
                     <td>
-                        <div class="dropdown">
-                            <button class="employee-badge dropdown-toggle" 
-                                    type="button" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false"
-                                    data-shipment-id="${shipmentId}">
-                                ${employeeId}
-                            </button>
-                            <ul class="dropdown-menu">
-                                {% for employee in employees %}
-                                <li><a class="dropdown-item employee-option" href="#" data-employee="${employee.Employee_ID}">${employee.Employee_ID}</a></li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+                        <span class="employee-badge" data-shipment-id="${shipmentId}">${employeeId}</span>
                     </td>
                 `;
                 tableBody.appendChild(newRow);
@@ -600,58 +662,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Failed to update shipment ID');
             // Focus back on the input field
             editForm.querySelector('input').focus();
-        });
-    }
-
-    function updateShipmentCenter(shipmentId, newCenter, element) {
-        fetch('/update_shipment_center', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                shipment_id: shipmentId,
-                new_center: newCenter
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const button = element.closest('.dropdown').querySelector('.center-badge');
-                button.textContent = newCenter;
-                alert('Shipment center has been updated successfully.');
-            } else {
-                alert(data.message || 'Failed to update shipment center');
-            }
-        })
-        .catch(error => {
-            alert('Failed to update shipment center');
-        });
-    }
-
-    function updateShipmentEmployee(shipmentId, newEmployee, element) {
-        fetch('/update_shipment_employee', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                shipment_id: shipmentId,
-                new_employee: newEmployee
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const button = element.closest('.dropdown').querySelector('.employee-badge');
-                button.textContent = newEmployee;
-                alert('Employee has been updated successfully.');
-            } else {
-                alert(data.message || 'Failed to update employee');
-            }
-        })
-        .catch(error => {
-            alert('Failed to update employee');
         });
     }
 });
